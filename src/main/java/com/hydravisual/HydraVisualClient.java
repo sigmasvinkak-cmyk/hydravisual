@@ -1,7 +1,9 @@
 package com.hydravisual;
 
-import net.fabricmc.api.ClientModInitializer;
 import com.hydravisual.module.ModuleManager;
+import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +23,19 @@ public class HydraVisualClient implements ClientModInitializer {
         // Initialize module system
         moduleManager = new ModuleManager();
         moduleManager.init();
+
+        // Register keybindings
+        KeyBindManager.init(moduleManager);
+
+        // Register HUD render callback (Fabric API)
+        HudRenderCallback.EVENT.register((drawContext, renderTickCounter) -> {
+            moduleManager.onRender(drawContext);
+        });
+
+        // Register tick callback
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            moduleManager.onTick();
+        });
 
         LOGGER.info("✅ Загружено {} модулей", moduleManager.getModuleCount());
     }

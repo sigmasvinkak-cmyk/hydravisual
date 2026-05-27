@@ -2,6 +2,7 @@ package com.hydravisual.module;
 
 import com.hydravisual.HydraVisualClient;
 import com.hydravisual.module.modules.*;
+import net.minecraft.client.gui.DrawContext;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,12 +40,6 @@ public class ModuleManager {
                 .orElse(null);
     }
 
-    public List<Module> getModulesByCategory(Module.Category category) {
-        return modules.stream()
-                .filter(m -> m.getCategory() == category)
-                .toList();
-    }
-
     public int getModuleCount() {
         return modules.size();
     }
@@ -57,11 +52,26 @@ public class ModuleManager {
         }
     }
 
-    public void onRender(float tickDelta) {
+    public void onRender(DrawContext context) {
+        int y = 4;
+
         for (Module module : modules) {
-            if (module.isEnabled()) {
-                module.onRender(tickDelta);
+            if (module.isEnabled() && module instanceof HudModule hudModule) {
+                String text = hudModule.getHudText();
+                if (text != null && !text.isEmpty()) {
+                    context.drawText(
+                        net.minecraft.client.MinecraftClient.getInstance().textRenderer,
+                        text, 4, y, hudModule.getColor(), true
+                    );
+                    y += 12;
+                }
             }
         }
+
+        // Watermark
+        context.drawText(
+            net.minecraft.client.MinecraftClient.getInstance().textRenderer,
+            "HydraVisual v1.0.0", 4, y, 0x88AAAAAA, true
+        );
     }
 }

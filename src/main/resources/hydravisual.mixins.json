@@ -3,10 +3,7 @@
   "minVersion": "0.8",
   "package": "com.hydravisual.mixin",
   "compatibilityLevel": "JAVA_21",
-  "client": [
-    "InGameHudMixin",
-    "KeyboardMixin"
-  ],
+  "client": [],
   "injectors": {
     "defaultRequire": 1
   }

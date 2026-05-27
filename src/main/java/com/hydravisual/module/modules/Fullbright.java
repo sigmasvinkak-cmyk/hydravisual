@@ -20,7 +20,7 @@ public class Fullbright extends Module {
         if (client.options != null) {
             SimpleOption<Double> gamma = client.options.getGamma();
             previousGamma = gamma.getValue();
-            gamma.setValue(15.0); // Max brightness
+            gamma.setValue(15.0);
         }
     }
 

@@ -1,13 +1,13 @@
 package com.hydravisual.module.modules;
 
+import com.hydravisual.module.HudModule;
 import com.hydravisual.module.Module;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.DrawContext;
 
 /**
  * FPS Display — показывает FPS на экране
  */
-public class FPSDisplay extends Module {
+public class FPSDisplay extends Module implements HudModule {
     public FPSDisplay() {
         super("FPS", "Показывает FPS на экране", Category.HUD);
     }
@@ -19,16 +19,12 @@ public class FPSDisplay extends Module {
     public void onDisable() {}
 
     @Override
-    public void onRender(float tickDelta) {
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) return;
-
-        // FPS is rendered via HUD mixin
+    public String getHudText() {
+        return "FPS: " + MinecraftClient.getInstance().getCurrentFps();
     }
 
-    public String getFPSText() {
-        MinecraftClient client = MinecraftClient.getInstance();
-        int fps = client.getCurrentFps();
-        return "FPS: " + fps;
+    @Override
+    public int getColor() {
+        return 0xFF00FF88;
     }
 }
