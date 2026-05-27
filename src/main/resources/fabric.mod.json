@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "hydravisual",
+  "version": "${version}",
+  "name": "HydraVisual",
+  "description": "Visual client for Minecraft — HydraVisual",
+  "authors": ["HydraVisual Team"],
+  "contact": {
+    "homepage": "https://github.com/sigmasvinkak-cmyk/hydravisual",
+    "sources": "https://github.com/sigmasvinkak-cmyk/hydravisual"
+  },
+  "license": "MIT",
+  "icon": "assets/hydravisual/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.hydravisual.HydraVisualClient"]
+  },
+  "mixins": ["hydravisual.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
