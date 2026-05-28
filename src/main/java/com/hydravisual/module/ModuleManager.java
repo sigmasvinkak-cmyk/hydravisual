@@ -67,11 +67,5 @@ public class ModuleManager {
                 }
             }
         }
-
-        // Watermark
-        context.drawText(
-            net.minecraft.client.MinecraftClient.getInstance().textRenderer,
-            "HydraVisual v1.0.0", 4, y, 0x88AAAAAA, true
-        );
     }
 }

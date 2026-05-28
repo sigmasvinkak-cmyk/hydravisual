@@ -25,7 +25,7 @@ public class HydraVisualClient implements ClientModInitializer {
         moduleManager.init();
 
         // Register keybindings
-        KeyBindManager.init(moduleManager);
+        KeyBindManager.init();
 
         // Register HUD render callback (Fabric API)
         HudRenderCallback.EVENT.register((drawContext, renderTickCounter) -> {
