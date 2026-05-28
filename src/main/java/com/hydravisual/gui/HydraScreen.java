@@ -196,7 +196,7 @@ public class HydraScreen extends Screen {
     private void drawSidebar(DrawContext ctx, int mx, int my, int alpha, float delta) {
         // Logo / brand area
         int logoY = py + 14;
-        ctx.drawText(textRenderer, "Client Pasta", px + 14, logoY, withAlpha(0xFFe0e0e8, alpha), false);
+        ctx.drawText(textRenderer, "SeladalaVisual", px + 14, logoY, withAlpha(0xFFe0e0e8, alpha), false);
         // Subtle subtitle
         ctx.drawText(textRenderer, "v1.2.0", px + 14, logoY + 12, withAlpha(0xFF505058, alpha), false);
 
