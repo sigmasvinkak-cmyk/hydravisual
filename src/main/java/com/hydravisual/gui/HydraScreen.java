@@ -3,7 +3,6 @@ package com.hydravisual.gui;
 import com.hydravisual.HydraVisualClient;
 import com.hydravisual.module.Module;
 import com.hydravisual.module.ModuleManager;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
@@ -11,61 +10,37 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
-/**
- * Главное меню — красивый тёмный UI с боковым меню
- * Right Shift — открыть/закрыть
- */
 public class HydraScreen extends Screen {
 
-    // ===== ТАБЫ =====
     private enum Tab {
-        VISUALS("Visuals", "\uD83D\uDC41", 0xFFa78bfa),
-        FRIENDS("Friends", "\uD83D\uDC65", 0xFF60a5fa),
-        UTILITIES("Utilities", "\uD83D\uDD27", 0xFF34d399),
-        COSMETICS("Cosmetics", "\uD83C\uDFA8", 0xFFf472b6),
-        CONFIGS("Configs", "\u2699", 0xFFfbbf24);
-
-        final String label;
-        final String icon;
-        final int accentColor;
-        Tab(String label, String icon, int accent) {
-            this.label = label;
-            this.icon = icon;
-            this.accentColor = accent;
-        }
+        VISUALS("Visuals", "\u2726"),
+        FRIENDS("Friends", "\u2661"),
+        UTILITIES("Utilities", "\u2692"),
+        COSMETICS("Cosmetics", "\u2605"),
+        CONFIGS("Configs", "\u2699");
+        final String label, icon;
+        Tab(String l, String i) { label = l; icon = i; }
     }
 
-    // ===== ЦВЕТА =====
-    private static final int BG_PANEL      = 0xFF0d0d1a;
-    private static final int BG_SIDEBAR    = 0xFF0a0a15;
-    private static final int BG_CONTENT    = 0xFF111126;
-    private static final int BG_CARD       = 0xFF181838;
-    private static final int BG_CARD_HOVER = 0xFF1f1f50;
-    private static final int BORDER_DIM    = 0xFF1a1a3e;
-    private static final int TEXT_WHITE    = 0xFFe8e8f8;
-    private static final int TEXT_GRAY     = 0xFF9898b8;
-    private static final int TEXT_DIM      = 0xFF505070;
-    private static final int TOGGLE_ON     = 0xFF7c3aed;
-    private static final int TOGGLE_OFF    = 0xFF252545;
-
-    // ===== СОСТОЯНИЕ =====
     private Tab selectedTab = Tab.VISUALS;
     private final ModuleManager moduleManager;
 
-    // Размеры панели
+    // Panel geometry
     private int px, py, pw, ph;
-    private static final int SIDEBAR_W = 160;
-    private static final int TAB_H = 40;
-    private static final int HEADER_H = 60;
-    private static final int CARD_H = 48;
+    private static final int SIDEBAR_W = 130;
+    private static final int TAB_H = 32;
+    private static final int CARD_H = 44;
     private static final int CARD_GAP = 4;
-    private static final int CARD_RADIUS = 4;
+    private static final int RAINBOW_BAR_H = 2;
 
-    // Анимация
-    private float anim = 0f;
-    private float tabIndicatorY = -1;
-    private float tabIndicatorTargetY = -1;
-    private int hoveredCard = -1;
+    // Animation state
+    private float openAnim = 0f;
+    private float scrollOffset = 0f;
+    private float scrollTarget = 0f;
+    private float tabIndicatorY = -1f;
+    private float[] tabHoverAnim = new float[Tab.values().length];
+    private float[] cardHoverAnim;
+    private float headerPulse = 0f;
 
     public HydraScreen() {
         super(Text.literal("Menu"));
@@ -74,309 +49,432 @@ public class HydraScreen extends Screen {
 
     @Override
     protected void init() {
-        pw = Math.min(540, width - 40);
-        ph = Math.min(380, height - 40);
+        pw = Math.min(480, width - 40);
+        ph = Math.min(340, height - 40);
         px = (width - pw) / 2;
         py = (height - ph) / 2;
-        anim = 0f;
-        tabIndicatorY = -1;
+        openAnim = 0f;
+        tabIndicatorY = -1f;
+        scrollOffset = 0f;
+        scrollTarget = 0f;
+        int modCount = moduleManager.getModules().size();
+        cardHoverAnim = new float[Math.max(modCount, 1)];
     }
 
-    @Override
-    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
-        // Плавное появление
-        anim = Math.min(1f, anim + delta * 0.1f);
-        float ease = easeOutCubic(anim);
+    // ==================== COLOR UTILS ====================
 
-        if (ease < 0.02f) return;
-
-        int alpha = (int)(ease * 255);
-
-        // Тёмный оверлей на весь экран
-        int overlayAlpha = (int)(ease * 120);
-        ctx.fill(0, 0, width, height, (overlayAlpha << 24));
-
-        // ===== ТЕНЬ ПАНЕЛИ =====
-        for (int i = 3; i >= 1; i--) {
-            int shadowAlpha = (int)(ease * 15);
-            ctx.fill(px - i, py - i, px + pw + i, py + ph + i, (shadowAlpha << 24) | 0x000008);
-        }
-
-        // ===== ПАНЕЛЬ =====
-        ctx.fill(px, py, px + pw, py + ph, withAlpha(BG_PANEL, alpha));
-
-        // ===== ВЕРХНЯЯ АКЦЕНТНАЯ ЛИНИЯ (градиент) =====
-        drawGradientLine(ctx, px, py, px + pw, py + 2, selectedTab.accentColor, alpha);
-
-        // ===== САЙДБАР =====
-        ctx.fill(px, py, px + SIDEBAR_W, py + ph, withAlpha(BG_SIDEBAR, alpha));
-        // Разделитель сайдбар/контент
-        ctx.fill(px + SIDEBAR_W, py + 2, px + SIDEBAR_W + 1, py + ph, withAlpha(BORDER_DIM, alpha));
-
-        drawSidebar(ctx, mouseX, mouseY, alpha, delta);
-
-        // ===== КОНТЕНТ =====
-        drawContent(ctx, mouseX, mouseY, alpha);
-
-        // ===== НИЖНЯЯ ТОНКАЯ ЛИНИЯ =====
-        drawGradientLine(ctx, px, py + ph - 1, px + pw, py + ph, selectedTab.accentColor, alpha / 4);
+    private int rainbow(int offset) {
+        float hue = ((System.currentTimeMillis() + offset) % 4000) / 4000f;
+        return 0xFF000000 | hsbToRgb(hue, 0.6f, 1.0f);
     }
 
-    // ===== САЙДБАР =====
-    private void drawSidebar(DrawContext ctx, int mx, int my, int alpha, float delta) {
-        // Лого — просто "CP" бейдж
-        int logoX = px + 16;
-        int logoY = py + 16;
+    private int rainbowSoft(int offset) {
+        float hue = ((System.currentTimeMillis() + offset) % 4000) / 4000f;
+        return 0xFF000000 | hsbToRgb(hue, 0.35f, 0.85f);
+    }
 
-        // Квадратный бейдж с градиентом
-        int badgeSize = 32;
-        ctx.fill(logoX, logoY, logoX + badgeSize, logoY + badgeSize, withAlpha(0xFF7c3aed, alpha));
-        ctx.fill(logoX + 1, logoY + 1, logoX + badgeSize - 1, logoY + badgeSize - 1, withAlpha(0xFF1a1040, alpha));
-        ctx.drawText(textRenderer, "CP", logoX + 8, logoY + 12, withAlpha(0xFFa78bfa, alpha), false);
-
-        // Название рядом
-        ctx.drawText(textRenderer, "Client", logoX + badgeSize + 8, logoY + 6, withAlpha(TEXT_WHITE, alpha), false);
-        ctx.drawText(textRenderer, "Pasta", logoX + badgeSize + 8, logoY + 18, withAlpha(TEXT_DIM, alpha), false);
-
-        // Разделитель
-        int sepY = logoY + badgeSize + 12;
-        drawFadeLine(ctx, px + 14, sepY, px + SIDEBAR_W - 14, sepY + 1, alpha / 4);
-
-        // ===== ТАБЫ =====
-        int tabStartY = sepY + 10;
-        float targetY = tabStartY;
-
-        for (int i = 0; i < Tab.values().length; i++) {
-            Tab tab = Tab.values()[i];
-            int tabY = tabStartY + i * TAB_H;
-            boolean selected = tab == selectedTab;
-            boolean hovered = mx >= px + 6 && mx <= px + SIDEBAR_W - 6
-                           && my >= tabY && my < tabY + TAB_H;
-
-            if (selected) {
-                targetY = tabY;
-            }
-
-            // Фон таба
-            if (selected) {
-                // Подсвеченный фон
-                ctx.fill(px + 6, tabY + 2, px + SIDEBAR_W - 6, tabY + TAB_H - 2,
-                        withAlpha(tab.accentColor, alpha / 8));
-                // Боковая метка
-                ctx.fill(px + 6, tabY + 4, px + 6, tabY + TAB_H - 4,
-                        withAlpha(tab.accentColor, alpha));
-            } else if (hovered) {
-                ctx.fill(px + 6, tabY + 2, px + SIDEBAR_W - 6, tabY + TAB_H - 2,
-                        withAlpha(0xFFFFFFFF, alpha / 15));
-            }
-
-            // Иконка
-            int iconX = px + 20;
-            int textY = tabY + (TAB_H - 9) / 2;
-            ctx.drawText(textRenderer, tab.icon, iconX, textY,
-                    withAlpha(selected ? tab.accentColor : TEXT_DIM, alpha), false);
-
-            // Текст
-            int labelX = iconX + 16;
-            int textColor = selected ? withAlpha(TEXT_WHITE, alpha) : withAlpha(TEXT_GRAY, alpha);
-            ctx.drawText(textRenderer, tab.label, labelX, textY, textColor, false);
-        }
-
-        // Анимированный боковой индикатор
-        if (tabIndicatorY < 0) {
-            tabIndicatorY = targetY;
+    private static int hsbToRgb(float hue, float sat, float bri) {
+        int r = 0, g = 0, b = 0;
+        if (sat == 0) {
+            r = g = b = (int)(bri * 255f + 0.5f);
         } else {
-            tabIndicatorY += (targetY - tabIndicatorY) * Math.min(1f, delta * 8f);
-        }
-        int indY = (int) tabIndicatorY;
-        ctx.fill(px, indY + 6, px + 3, indY + TAB_H - 6,
-                withAlpha(selectedTab.accentColor, alpha));
-
-        // Бинд в нижней части сайдбара
-        int bottomY = py + ph - 22;
-        String bindText = "[RShift] toggle";
-        int bindW = textRenderer.getWidth(bindText);
-        int bindX = px + (SIDEBAR_W - bindW) / 2;
-        ctx.drawText(textRenderer, bindText, bindX, bottomY,
-                withAlpha(TEXT_DIM, alpha / 2), false);
-    }
-
-    // ===== КОНТЕНТ =====
-    private void drawContent(DrawContext ctx, int mx, int my, int alpha) {
-        int cx = px + SIDEBAR_W + 16;
-        int cy = py + 18;
-        int cw = pw - SIDEBAR_W - 32;
-
-        // Заголовок таба
-        ctx.drawText(textRenderer, selectedTab.label, cx, cy,
-                withAlpha(selectedTab.accentColor, alpha), false);
-
-        // Подчёркивание
-        int titleW = textRenderer.getWidth(selectedTab.label);
-        ctx.fill(cx, cy + 12, cx + titleW, cy + 13,
-                withAlpha(selectedTab.accentColor, alpha / 4));
-
-        cy += 24;
-
-        switch (selectedTab) {
-            case VISUALS -> drawModuleCards(ctx, cx, cy, cw, mx, my, alpha);
-            case FRIENDS -> drawPlaceholder(ctx, cx, cy, cw, alpha, "Друзья", "Список друзей пока пуст");
-            case UTILITIES -> drawPlaceholder(ctx, cx, cy, cw, alpha, "Утилиты", "Будет добавлено позже");
-            case COSMETICS -> drawPlaceholder(ctx, cx, cy, cw, alpha, "Косметика", "Будет добавлено позже");
-            case CONFIGS -> drawPlaceholder(ctx, cx, cy, cw, alpha, "Конфиги", "Управление конфигами скоро");
-        }
-    }
-
-    // ===== КАРТОЧКИ МОДУЛЕЙ =====
-    private void drawModuleCards(DrawContext ctx, int x, int y, int w, int mx, int my, int alpha) {
-        List<Module> modules = moduleManager.getModules();
-        hoveredCard = -1;
-
-        for (int i = 0; i < modules.size(); i++) {
-            Module mod = modules.get(i);
-            int cardY = y + i * (CARD_H + CARD_GAP);
-            boolean hovered = mx >= x && mx <= x + w && my >= cardY && my < cardY + CARD_H;
-
-            if (hovered) hoveredCard = i;
-
-            // Фон карточки
-            int cardBg = hovered ? withAlpha(BG_CARD_HOVER, alpha) : withAlpha(BG_CARD, alpha);
-            ctx.fill(x, cardY, x + w, cardY + CARD_H, cardBg);
-
-            // Рамка сверху и снизу
-            ctx.fill(x, cardY, x + w, cardY + 1, withAlpha(BORDER_DIM, alpha / 2));
-            ctx.fill(x, cardY + CARD_H - 1, x + w, cardY + CARD_H, withAlpha(BORDER_DIM, alpha / 3));
-
-            // Левая акцентная полоска если включён
-            if (mod.isEnabled()) {
-                ctx.fill(x, cardY + 1, x + 3, cardY + CARD_H - 1, withAlpha(TOGGLE_ON, alpha));
-            }
-
-            // Название модуля
-            int nameColor = mod.isEnabled() ? withAlpha(TEXT_WHITE, alpha) : withAlpha(TEXT_GRAY, alpha);
-            ctx.drawText(textRenderer, mod.getName(), x + 12, cardY + 10, nameColor, false);
-
-            // Описание
-            ctx.drawText(textRenderer, mod.getDescription(), x + 12, cardY + 24,
-                    withAlpha(TEXT_DIM, alpha), false);
-
-            // Переключатель
-            drawToggle(ctx, x + w - 40, cardY + (CARD_H - 14) / 2, mod.isEnabled(), alpha);
-        }
-    }
-
-    // ===== ПЕРЕКЛЮЧАТЕЛЬ ON/OFF =====
-    private void drawToggle(DrawContext ctx, int x, int y, boolean on, int alpha) {
-        int w = 30, h = 14;
-
-        // Трек
-        int trackColor = on ? withAlpha(TOGGLE_ON, alpha) : withAlpha(TOGGLE_OFF, alpha);
-        ctx.fill(x, y, x + w, y + h, trackColor);
-
-        // Свечение
-        if (on) {
-            ctx.fill(x - 1, y - 1, x + w + 1, y + h + 1, withAlpha(TOGGLE_ON, alpha / 8));
-        }
-
-        // Ползунок
-        int knobSize = h - 4;
-        int knobX = on ? x + w - knobSize - 2 : x + 2;
-        int knobColor = on ? withAlpha(0xFFFFFFFF, alpha) : withAlpha(0xFF606080, alpha);
-        ctx.fill(knobX, y + 2, knobX + knobSize, y + 2 + knobSize, knobColor);
-    }
-
-    // ===== ЗАГЛУШКА ДЛЯ ПУСТЫХ ТАБОВ =====
-    private void drawPlaceholder(DrawContext ctx, int x, int y, int w, int alpha,
-                                  String title, String subtitle) {
-        int centerX = x + w / 2;
-        int centerY = y + (ph - HEADER_H) / 2 - 30;
-
-        // Иконка — точки
-        String dots = "• • •";
-        int dotsW = textRenderer.getWidth(dots);
-        ctx.drawText(textRenderer, dots, centerX - dotsW / 2, centerY - 14,
-                withAlpha(TEXT_DIM, alpha / 3), false);
-
-        // Заголовок
-        int titleW = textRenderer.getWidth(title);
-        ctx.drawText(textRenderer, title, centerX - titleW / 2, centerY + 4,
-                withAlpha(TEXT_GRAY, alpha), false);
-
-        // Подзаголовок
-        int subW = textRenderer.getWidth(subtitle);
-        ctx.drawText(textRenderer, subtitle, centerX - subW / 2, centerY + 18,
-                withAlpha(TEXT_DIM, alpha / 2), false);
-    }
-
-    // ===== ГРАДИЕНТНАЯ ЛИНИЯ =====
-    private void drawGradientLine(DrawContext ctx, int x1, int y1, int x2, int y2, int color, int alpha) {
-        ctx.fillGradient(x1, y1, x2, y2, withAlpha(color, alpha), withAlpha(color, alpha / 2));
-    }
-
-    // ===== ПЛАВНАЯ ЛИНИЯ =====
-    private void drawFadeLine(DrawContext ctx, int x1, int y1, int x2, int y2, int alpha) {
-        ctx.fillGradient(x1, y1, x2, y2, withAlpha(0xFFFFFFFF, alpha / 2), withAlpha(0xFF000000, 0));
-    }
-
-    // ===== ВВОД =====
-
-    @Override
-    public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
-
-        // Клик по табам
-        int sepY = py + 16 + 32 + 12;
-        int tabStartY = sepY + 10;
-        for (int i = 0; i < Tab.values().length; i++) {
-            int tabY = tabStartY + i * TAB_H;
-            if (mouseX >= px + 6 && mouseX <= px + SIDEBAR_W - 6
-                    && mouseY >= tabY && mouseY < tabY + TAB_H) {
-                selectedTab = Tab.values()[i];
-                return true;
+            float h = (hue - (float)Math.floor(hue)) * 6f;
+            float f = h - (float)Math.floor(h);
+            float p = bri * (1f - sat);
+            float q = bri * (1f - sat * f);
+            float t = bri * (1f - (sat * (1f - f)));
+            switch ((int) h) {
+                case 0 -> { r = (int)(bri*255+.5f); g = (int)(t*255+.5f); b = (int)(p*255+.5f); }
+                case 1 -> { r = (int)(q*255+.5f); g = (int)(bri*255+.5f); b = (int)(p*255+.5f); }
+                case 2 -> { r = (int)(p*255+.5f); g = (int)(bri*255+.5f); b = (int)(t*255+.5f); }
+                case 3 -> { r = (int)(p*255+.5f); g = (int)(q*255+.5f); b = (int)(bri*255+.5f); }
+                case 4 -> { r = (int)(t*255+.5f); g = (int)(p*255+.5f); b = (int)(bri*255+.5f); }
+                case 5 -> { r = (int)(bri*255+.5f); g = (int)(p*255+.5f); b = (int)(q*255+.5f); }
             }
         }
-
-        // Клик по модулям (toggle)
-        if (selectedTab == Tab.VISUALS) {
-            int cx = px + SIDEBAR_W + 16;
-            int cy = py + 18 + 24;
-            int cw = pw - SIDEBAR_W - 32;
-            List<Module> modules = moduleManager.getModules();
-            for (int i = 0; i < modules.size(); i++) {
-                int cardY = cy + i * (CARD_H + CARD_GAP);
-                if (mouseX >= cx && mouseX <= cx + cw
-                        && mouseY >= cardY && mouseY < cardY + CARD_H) {
-                    modules.get(i).toggle();
-                    return true;
-                }
-            }
-        }
-
-        return super.mouseClicked(mouseX, mouseY, button);
-    }
-
-    @Override
-    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
-            close();
-            return true;
-        }
-        return super.keyPressed(keyCode, scanCode, modifiers);
-    }
-
-    @Override
-    public boolean shouldPause() {
-        return false;
-    }
-
-    // ===== УТИЛИТЫ =====
-
-    private static float easeOutCubic(float t) {
-        return 1f - (1f - t) * (1f - t) * (1f - t);
+        return (r << 16) | (g << 8) | b;
     }
 
     private static int withAlpha(int color, int alpha) {
         alpha = Math.max(0, Math.min(255, alpha));
         return (alpha << 24) | (color & 0x00FFFFFF);
     }
+
+    private static int lerpColor(int c1, int c2, float t) {
+        t = Math.max(0, Math.min(1, t));
+        int a1 = (c1 >> 24) & 0xFF, r1 = (c1 >> 16) & 0xFF, g1 = (c1 >> 8) & 0xFF, b1 = c1 & 0xFF;
+        int a2 = (c2 >> 24) & 0xFF, r2 = (c2 >> 16) & 0xFF, g2 = (c2 >> 8) & 0xFF, b2 = c2 & 0xFF;
+        return ((int)(a1 + (a2 - a1) * t) << 24) |
+               ((int)(r1 + (r2 - r1) * t) << 16) |
+               ((int)(g1 + (g2 - g1) * t) << 8) |
+               (int)(b1 + (b2 - b1) * t);
+    }
+
+    // ==================== DRAWING HELPERS ====================
+
+    private void drawRainbowBar(DrawContext ctx, int x, int y, int w, int h, int alpha, int speed) {
+        for (int i = 0; i < w; i++) {
+            int c = rainbow(i * speed);
+            ctx.fill(x + i, y, x + i + 1, y + h, withAlpha(c, alpha));
+        }
+    }
+
+    private void drawGlowRect(DrawContext ctx, int x, int y, int w, int h, int color, int layers) {
+        int a = (color >> 24) & 0xFF;
+        for (int i = layers; i >= 1; i--) {
+            int ga = a / (i * 2 + 1);
+            ctx.fill(x - i, y - i, x + w + i, y + h + i, withAlpha(color, ga));
+        }
+    }
+
+    // ==================== MAIN RENDER ====================
+
+    @Override
+    public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
+        // Opening animation (ease out cubic)
+        openAnim = Math.min(1f, openAnim + delta * 0.06f);
+        float ease = 1f - (1f - openAnim) * (1f - openAnim) * (1f - openAnim);
+        if (ease < 0.01f) return;
+        int alpha = (int)(ease * 255);
+
+        headerPulse += delta * 0.02f;
+
+        // Smooth scroll interpolation
+        scrollOffset += (scrollTarget - scrollOffset) * Math.min(1f, delta * 8f);
+
+        // Dark overlay behind panel
+        ctx.fill(0, 0, width, height, withAlpha(0xFF000000, (int)(ease * 120)));
+
+        // Panel outer glow (rainbow tinted)
+        int glowC = rainbow(0);
+        drawGlowRect(ctx, px, py, pw, ph, withAlpha(glowC, 15), 6);
+
+        // Main panel background
+        ctx.fill(px, py, px + pw, py + ph, withAlpha(0xFF0c0c1a, alpha));
+
+        // Top rainbow gradient bar
+        drawRainbowBar(ctx, px, py, pw, RAINBOW_BAR_H, alpha, 30);
+
+        // Sidebar
+        ctx.fill(px, py + RAINBOW_BAR_H, px + SIDEBAR_W, py + ph, withAlpha(0xFF090918, alpha));
+
+        // Sidebar right border (subtle rainbow)
+        for (int i = 0; i < ph - RAINBOW_BAR_H; i++) {
+            int c = rainbow(i * 15);
+            ctx.fill(px + SIDEBAR_W, py + RAINBOW_BAR_H + i, px + SIDEBAR_W + 1, py + RAINBOW_BAR_H + i + 1, withAlpha(c, alpha / 20));
+        }
+
+        drawSidebar(ctx, mouseX, mouseY, alpha, delta);
+        drawContent(ctx, mouseX, mouseY, alpha, delta);
+
+        // Bottom rainbow bar (thinner, dimmer)
+        drawRainbowBar(ctx, px, py + ph - 1, pw, 1, alpha / 3, 30);
+    }
+
+    // ==================== SIDEBAR ====================
+
+    private void drawSidebar(DrawContext ctx, int mx, int my, int alpha, float delta) {
+        // Logo area
+        int logoX = px + 12;
+        int logoY = py + RAINBOW_BAR_H + 10;
+
+        // "CP" badge with rainbow border
+        int badgeSize = 24;
+        int rc = rainbow(0);
+        ctx.fill(logoX - 1, logoY - 1, logoX + badgeSize + 1, logoY + badgeSize + 1, withAlpha(rc, (int)(alpha * 0.5f)));
+        ctx.fill(logoX, logoY, logoX + badgeSize, logoY + badgeSize, withAlpha(0xFF111130, alpha));
+        ctx.drawText(textRenderer, "CP", logoX + 5, logoY + 8, withAlpha(rc, alpha), true);
+
+        // Client name
+        ctx.drawText(textRenderer, "Client", logoX + badgeSize + 6, logoY + 3, withAlpha(0xFFe0e0ff, alpha), false);
+        ctx.drawText(textRenderer, "Pasta", logoX + badgeSize + 6, logoY + 14, withAlpha(0xFF505078, alpha), false);
+
+        // Rainbow separator
+        int sepY = logoY + badgeSize + 10;
+        drawRainbowBar(ctx, px + 10, sepY, SIDEBAR_W - 20, 1, alpha / 6, 25);
+
+        // Tabs
+        int tabStartY = sepY + 8;
+        float targetIndY = tabStartY;
+
+        for (int i = 0; i < Tab.values().length; i++) {
+            Tab tab = Tab.values()[i];
+            int tabY = tabStartY + i * TAB_H;
+            boolean sel = tab == selectedTab;
+            boolean hov = mx >= px + 4 && mx < px + SIDEBAR_W - 4 && my >= tabY && my < tabY + TAB_H;
+
+            if (sel) targetIndY = tabY;
+
+            // Hover animation
+            float hTarget = (sel || hov) ? 1f : 0f;
+            tabHoverAnim[i] += (hTarget - tabHoverAnim[i]) * Math.min(1f, delta * 8f);
+
+            // Tab background
+            if (tabHoverAnim[i] > 0.01f) {
+                int bgAlpha;
+                if (sel) {
+                    int rc2 = rainbow(i * 180);
+                    bgAlpha = (int)(alpha * 0.08f * tabHoverAnim[i]);
+                    ctx.fill(px + 6, tabY + 2, px + SIDEBAR_W - 6, tabY + TAB_H - 2, withAlpha(rc2, bgAlpha));
+                } else {
+                    bgAlpha = (int)(alpha * 0.04f * tabHoverAnim[i]);
+                    ctx.fill(px + 6, tabY + 2, px + SIDEBAR_W - 6, tabY + TAB_H - 2, withAlpha(0xFFFFFFFF, bgAlpha));
+                }
+            }
+
+            // Icon
+            int iconX = px + 16;
+            int iconCenterY = tabY + TAB_H / 2 - 4;
+            int iconC = sel ? rainbow(i * 180) : withAlpha(0xFF606088, alpha);
+            ctx.drawText(textRenderer, tab.icon, iconX, iconCenterY, iconC, sel);
+
+            // Label
+            int labelC = sel ? withAlpha(0xFFf0f0ff, alpha) : lerpColor(
+                withAlpha(0xFF707090, alpha),
+                withAlpha(0xFFc0c0e0, alpha),
+                tabHoverAnim[i]
+            );
+            ctx.drawText(textRenderer, tab.label, iconX + 14, iconCenterY, labelC, false);
+        }
+
+        // Animated rainbow side indicator
+        if (tabIndicatorY < 0) tabIndicatorY = targetIndY;
+        else tabIndicatorY += (targetIndY - tabIndicatorY) * Math.min(1f, delta * 6f);
+
+        int iy = (int) tabIndicatorY;
+        int ic = rainbow(0);
+        // Main indicator line
+        ctx.fill(px, iy + 6, px + 2, iy + TAB_H - 6, withAlpha(ic, alpha));
+        // Glow layers
+        ctx.fill(px + 2, iy + 8, px + 4, iy + TAB_H - 8, withAlpha(ic, alpha / 6));
+        ctx.fill(px + 4, iy + 10, px + 6, iy + TAB_H - 10, withAlpha(ic, alpha / 12));
+
+        // Bottom keybind hint
+        String hint = "[RShift] toggle";
+        int hw = textRenderer.getWidth(hint);
+        ctx.drawText(textRenderer, hint, px + (SIDEBAR_W - hw) / 2, py + ph - 16, withAlpha(0xFF303050, alpha / 2), false);
+    }
+
+    // ==================== CONTENT AREA ====================
+
+    private void drawContent(DrawContext ctx, int mx, int my, int alpha, float delta) {
+        int cx = px + SIDEBAR_W + 12;
+        int cy = py + RAINBOW_BAR_H + 10;
+        int cw = pw - SIDEBAR_W - 24;
+        int contentH = ph - RAINBOW_BAR_H - 20;
+
+        // Tab title
+        int titleC = rainbow(0);
+        ctx.drawText(textRenderer, selectedTab.label, cx, cy, withAlpha(titleC, alpha), true);
+
+        // Rainbow underline
+        int titleW = textRenderer.getWidth(selectedTab.label);
+        drawRainbowBar(ctx, cx, cy + 11, titleW + 10, 1, alpha / 3, 20);
+
+        int contentTop = cy + 18;
+        int contentArea = contentH - 28;
+
+        switch (selectedTab) {
+            case VISUALS -> drawModuleCards(ctx, cx, contentTop, cw, contentArea, mx, my, alpha, delta);
+            case FRIENDS -> drawPlaceholder(ctx, cx, contentTop, cw, contentArea, alpha, "Friends", "Coming soon...");
+            case UTILITIES -> drawPlaceholder(ctx, cx, contentTop, cw, contentArea, alpha, "Utilities", "Coming soon...");
+            case COSMETICS -> drawPlaceholder(ctx, cx, contentTop, cw, contentArea, alpha, "Cosmetics", "Coming soon...");
+            case CONFIGS -> drawPlaceholder(ctx, cx, contentTop, cw, contentArea, alpha, "Configs", "Coming soon...");
+        }
+    }
+
+    // ==================== MODULE CARDS ====================
+
+    private void drawModuleCards(DrawContext ctx, int x, int y, int w, int maxH, int mx, int my, int alpha, float delta) {
+        List<Module> modules = moduleManager.getModules();
+        int totalH = modules.size() * (CARD_H + CARD_GAP) - CARD_GAP;
+        int maxScroll = Math.max(0, totalH - maxH);
+        scrollTarget = Math.max(0, Math.min(scrollTarget, maxScroll));
+
+        int clipTop = y;
+        int clipBottom = y + maxH;
+
+        for (int i = 0; i < modules.size(); i++) {
+            Module mod = modules.get(i);
+            int cardY = y + i * (CARD_H + CARD_GAP) - (int) scrollOffset;
+
+            if (cardY + CARD_H < clipTop || cardY > clipBottom) continue;
+
+            boolean hov = mx >= x && mx <= x + w && my >= Math.max(clipTop, cardY) && my < Math.min(clipBottom, cardY + CARD_H);
+            boolean on = mod.isEnabled();
+
+            // Card hover animation
+            if (i < cardHoverAnim.length) {
+                float ht = hov ? 1f : 0f;
+                cardHoverAnim[i] += (ht - cardHoverAnim[i]) * Math.min(1f, delta * 10f);
+            }
+            float hoverF = (i < cardHoverAnim.length) ? cardHoverAnim[i] : 0f;
+
+            // Card background with hover lift effect
+            int bgBase = on ? 0xFF141438 : 0xFF101028;
+            int bgHover = on ? 0xFF1a1a48 : 0xFF161638;
+            int bg = lerpColor(withAlpha(bgBase, alpha), withAlpha(bgHover, alpha), hoverF);
+            ctx.fill(x, cardY, x + w, cardY + CARD_H, bg);
+
+            // Left rainbow accent (enabled modules)
+            if (on) {
+                int rc = rainbow(i * 120);
+                ctx.fill(x, cardY + 3, x + 2, cardY + CARD_H - 3, withAlpha(rc, alpha));
+                // Soft glow
+                ctx.fill(x + 2, cardY + 5, x + 4, cardY + CARD_H - 5, withAlpha(rc, alpha / 8));
+            }
+
+            // Module name
+            int nameC = on ? withAlpha(0xFFf0f0ff, alpha) : withAlpha(0xFF9090b0, alpha);
+            ctx.drawText(textRenderer, mod.getName(), x + 10, cardY + 8, nameC, on);
+
+            // Description
+            String desc = mod.getDescription();
+            if (desc.length() > 30) desc = desc.substring(0, 28) + "..";
+            ctx.drawText(textRenderer, desc, x + 10, cardY + 22, withAlpha(0xFF505068, alpha), false);
+
+            // Category badge
+            String cat = mod.getCategory().getDisplayName();
+            int catW = textRenderer.getWidth(cat) + 8;
+            int catX = x + w - catW - 40;
+            ctx.fill(catX, cardY + 8, catX + catW, catY(cardY, 8, 13), withAlpha(0xFF1a1a40, alpha));
+            ctx.drawText(textRenderer, cat, catX + 4, cardY + 10, withAlpha(0xFF606080, alpha), false);
+
+            // Toggle switch
+            drawToggle(ctx, x + w - 34, cardY + (CARD_H - 14) / 2, on, alpha, i);
+
+            // Bottom separator line
+            if (i < modules.size() - 1) {
+                ctx.fill(x + 8, cardY + CARD_H + 1, x + w - 8, cardY + CARD_H + 2, withAlpha(0xFF1a1a30, alpha / 3));
+            }
+        }
+
+        // Scrollbar
+        if (totalH > maxH && maxScroll > 0) {
+            int barX = x + w - 2;
+            float ratio = (float) maxH / totalH;
+            int thumbH = Math.max(16, (int)(maxH * ratio));
+            int thumbY = y + (int)((scrollOffset / maxScroll) * (maxH - thumbH));
+
+            // Track
+            ctx.fill(barX, y, barX + 2, y + maxH, withAlpha(0xFF151530, alpha / 2));
+
+            // Thumb (rainbow)
+            for (int i = 0; i < thumbH; i++) {
+                int c = rainbow(i * 12);
+                ctx.fill(barX, thumbY + i, barX + 2, thumbY + i + 1, withAlpha(c, (int)(alpha * 0.6f)));
+            }
+        }
+    }
+
+    private int catY(int cardY, int offsetTop, int height) {
+        return cardY + offsetTop + height;
+    }
+
+    // ==================== TOGGLE SWITCH ====================
+
+    private void drawToggle(DrawContext ctx, int x, int y, boolean on, int alpha, int index) {
+        int w = 28, h = 14;
+
+        if (on) {
+            // Rainbow-filled track
+            for (int i = 0; i < w; i++) {
+                int c = rainbow(index * 120 + i * 15);
+                ctx.fill(x + i, y, x + i + 1, y + h, withAlpha(c, alpha));
+            }
+        } else {
+            // Dark off-state track
+            ctx.fill(x, y, x + w, y + h, withAlpha(0xFF1a1a35, alpha));
+            ctx.fill(x, y, x + w, y + 1, withAlpha(0xFF222248, alpha));
+        }
+
+        // Knob
+        int knobS = h - 4;
+        int knobX = on ? x + w - knobS - 2 : x + 2;
+        int knobC = on ? withAlpha(0xFFFFFFFF, alpha) : withAlpha(0xFF404060, alpha);
+        ctx.fill(knobX, y + 2, knobX + knobS, y + 2 + knobS, knobC);
+    }
+
+    // ==================== PLACEHOLDER TABS ====================
+
+    private void drawPlaceholder(DrawContext ctx, int x, int y, int w, int h, int alpha, String title, String sub) {
+        int cx = x + w / 2;
+        int cy = y + h / 2 - 16;
+
+        // Animated rainbow dots
+        for (int i = 0; i < 5; i++) {
+            float bounce = (float) Math.sin((System.currentTimeMillis() + i * 200) / 500.0) * 4;
+            int dotX = cx - 24 + i * 12;
+            int dotY = cy - 12 + (int) bounce;
+            int dc = rainbow(i * 250);
+            ctx.fill(dotX - 2, dotY - 2, dotX + 2, dotY + 2, withAlpha(dc, alpha / 2));
+        }
+
+        int tw = textRenderer.getWidth(title);
+        ctx.drawText(textRenderer, title, cx - tw / 2, cy + 8, withAlpha(0xFF707088, alpha), false);
+
+        int sw = textRenderer.getWidth(sub);
+        ctx.drawText(textRenderer, sub, cx - sw / 2, cy + 22, withAlpha(0xFF404058, alpha / 2), false);
+
+        // Rainbow line
+        drawRainbowBar(ctx, cx - 30, cy + 36, 60, 1, alpha / 5, 30);
+    }
+
+    // ==================== INPUT ====================
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button != 0) return super.mouseClicked(mouseX, mouseY, button);
+
+        // Tab clicks
+        int logoY = py + RAINBOW_BAR_H + 10;
+        int sepY = logoY + 24 + 10;
+        int tabStartY = sepY + 8;
+
+        for (int i = 0; i < Tab.values().length; i++) {
+            int tabY = tabStartY + i * TAB_H;
+            if (mouseX >= px + 4 && mouseX < px + SIDEBAR_W - 4 && mouseY >= tabY && mouseY < tabY + TAB_H) {
+                selectedTab = Tab.values()[i];
+                scrollTarget = 0;
+                scrollOffset = 0;
+                return true;
+            }
+        }
+
+        // Module card clicks
+        if (selectedTab == Tab.VISUALS) {
+            int cx = px + SIDEBAR_W + 12;
+            int cy = py + RAINBOW_BAR_H + 10 + 18;
+            int cw = pw - SIDEBAR_W - 24;
+            int contentArea = ph - RAINBOW_BAR_H - 20 - 28;
+            int clipBottom = cy + contentArea;
+
+            List<Module> modules = moduleManager.getModules();
+            for (int i = 0; i < modules.size(); i++) {
+                int cardY = cy + i * (CARD_H + CARD_GAP) - (int) scrollOffset;
+                if (cardY + CARD_H < cy || cardY > clipBottom) continue;
+                if (mouseX >= cx && mouseX <= cx + cw && mouseY >= Math.max(cy, cardY) && mouseY < Math.min(clipBottom, cardY + CARD_H)) {
+                    modules.get(i).toggle();
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        scrollTarget -= (float)(verticalAmount * 28);
+        scrollTarget = Math.max(0, scrollTarget);
+        return true;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) { close(); return true; }
+        return super.keyPressed(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean shouldPause() { return false; }
 }
