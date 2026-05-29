@@ -19,7 +19,7 @@ public class HydraVisualClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         INSTANCE = this;
-        LOGGER.info("🐉 {} v1.2.0 загружен!", MOD_NAME);
+        LOGGER.info("🐉 {} v1.3.0 загружен!", MOD_NAME);
 
         moduleManager = new ModuleManager();
         moduleManager.init();

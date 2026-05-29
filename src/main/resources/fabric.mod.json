@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "id": "hydravisual",
   "version": "${version}",
-  "name": "HydraVisual",
-  "description": "Visual client for Minecraft — HydraVisual",
-  "authors": ["HydraVisual Team"],
+  "name": "SeladalaVisual",
+  "description": "Visual client for Minecraft — SeladalaVisual",
+  "authors": ["SeladalaVisual Team"],
   "contact": {
     "homepage": "https://github.com/sigmasvinkak-cmyk/hydravisual",
     "sources": "https://github.com/sigmasvinkak-cmyk/hydravisual"

@@ -147,7 +147,7 @@ public class HydraScreen extends Screen {
     private void drawSidebar(DrawContext ctx,int mx,int my,int alpha,float delta) {
         int logoY=py+14;
         ctx.drawText(textRenderer,"SeladalaVisual",px+14,logoY,withAlpha(0xFFe0e0e8,alpha),false);
-        ctx.drawText(textRenderer,"v1.2.0",px+14,logoY+12,withAlpha(0xFF505058,alpha),false);
+        ctx.drawText(textRenderer,"v1.3.0",px+14,logoY+12,withAlpha(0xFF505058,alpha),false);
         int sepY=logoY+28;
         ctx.fill(px+12,sepY,px+SIDEBAR_W-12,sepY+1,withAlpha(0xFF2a2a32,alpha));
         int tabStartY=sepY+10;
