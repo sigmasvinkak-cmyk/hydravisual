@@ -300,6 +300,18 @@ public class HydraScreen extends Screen {
                 fillR(ctx,knobX,ty2,th,th,4,withAlpha(0xFFe0e0e8,alpha));
 
                 sy+=th+10;
+            } else if(s.getType()==Setting.Type.ENUM) {
+                // Enum row: label    < option >
+                ctx.drawText(textRenderer,s.getName(),cx+4,sy,withAlpha(0xFFc0c0c8,alpha),false);
+
+                // Draw selector: [< selected >]
+                String sel="< "+s.getSelected()+" >";
+                int sw2=textRenderer.getWidth(sel);
+                int selX=cx+cw-sw2-8;
+                fillR(ctx,selX-4,sy-2,sw2+8,12,3,withAlpha(0xFF1a1a28,alpha));
+                ctx.drawText(textRenderer,sel,selX,sy,withAlpha(accent(i*200),alpha),false);
+
+                sy+=16;
             }
         }
 
@@ -350,6 +362,13 @@ public class HydraScreen extends Screen {
                         // Also click on label toggles
                         if(mx>=cx&&mx<=cx+cw&&my>=sy&&my<=sy+th+2) { s.toggle(); return true; }
                         sy+=th+10;
+                    } else if(s.getType()==Setting.Type.ENUM) {
+                        // Click anywhere on row = next; right-click = prev
+                        if(mx>=cx&&mx<=cx+cw&&my>=sy-2&&my<=sy+14) {
+                            if(button==1) s.prevOption(); else s.nextOption();
+                            return true;
+                        }
+                        sy+=16;
                     }
                 }
             }

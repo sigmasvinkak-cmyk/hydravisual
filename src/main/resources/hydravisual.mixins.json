@@ -4,7 +4,8 @@
   "package": "com.hydravisual.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
-    "ChatScreenMixin"
+    "ChatScreenMixin",
+    "PlayerAttackMixin"
   ],
   "injectors": {
     "defaultRequire": 1

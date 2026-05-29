@@ -21,6 +21,9 @@ public class ModuleManager {
         // === HUD ===
         register(new HudOverlayModule());
 
+        // === UTILITY ===
+        register(new HitSound());
+
         HydraVisualClient.LOGGER.info("ModuleManager initialized with {} modules", modules.size());
     }
 
@@ -73,6 +76,14 @@ public class ModuleManager {
     public HudOverlayModule getHudModule() {
         for (Module m : modules) {
             if (m instanceof HudOverlayModule h) return h;
+        }
+        return null;
+    }
+
+    /** Get the HitSound module for mixin access */
+    public HitSound getHitSoundModule() {
+        for (Module m : modules) {
+            if (m instanceof HitSound h) return h;
         }
         return null;
     }

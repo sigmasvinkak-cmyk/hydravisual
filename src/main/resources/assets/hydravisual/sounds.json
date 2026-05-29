@@ -1,0 +1,18 @@
+{
+  "hydravisual:hitsound.pop": {
+    "sounds": ["hydravisual:pop"],
+    "category": "player"
+  },
+  "hydravisual:hitsound.uwu": {
+    "sounds": ["hydravisual:uwu"],
+    "category": "player"
+  },
+  "hydravisual:hitsound.crit1": {
+    "sounds": ["hydravisual:crit1"],
+    "category": "player"
+  },
+  "hydravisual:hitsound.crit2": {
+    "sounds": ["hydravisual:crit2"],
+    "category": "player"
+  }
+}
