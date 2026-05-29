@@ -3,12 +3,13 @@ package com.hydravisual.module;
 import com.hydravisual.HydraVisualClient;
 import com.hydravisual.module.modules.*;
 import net.minecraft.client.gui.DrawContext;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Manages all HydraVisual modules
+ * Manages all modules
  */
 public class ModuleManager {
     private final List<Module> modules = new ArrayList<>();
@@ -18,8 +19,7 @@ public class ModuleManager {
         register(new Fullbright());
 
         // === HUD ===
-        register(new FPSDisplay());
-        register(new CoordsDisplay());
+        register(new HudOverlayModule());
 
         HydraVisualClient.LOGGER.info("ModuleManager initialized with {} modules", modules.size());
     }
@@ -29,43 +29,51 @@ public class ModuleManager {
         HydraVisualClient.LOGGER.info("Registered module: {}", module.getName());
     }
 
-    public List<Module> getModules() {
-        return modules;
-    }
+    public List<Module> getModules() { return modules; }
 
     public Module getModule(String name) {
         return modules.stream()
                 .filter(m -> m.getName().equalsIgnoreCase(name))
-                .findFirst()
-                .orElse(null);
+                .findFirst().orElse(null);
     }
 
-    public int getModuleCount() {
-        return modules.size();
-    }
+    public int getModuleCount() { return modules.size(); }
 
     public void onTick() {
         for (Module module : modules) {
-            if (module.isEnabled()) {
-                module.onTick();
+            if (module.isEnabled()) module.onTick();
+        }
+    }
+
+    /**
+     * Called on key press — checks all module keybinds
+     */
+    public void onKeyPress(int keyCode) {
+        if (keyCode == GLFW.GLFW_KEY_UNKNOWN) return;
+        for (Module module : modules) {
+            if (module.getKeyBind() == keyCode) {
+                module.toggle();
             }
         }
     }
 
+    /**
+     * Render HUD overlay (non-HudOverlayModule rendering removed,
+     * HudOverlayModule handles its own rendering)
+     */
     public void onRender(DrawContext context) {
-        int y = 4;
-
         for (Module module : modules) {
-            if (module.isEnabled() && module instanceof HudModule hudModule) {
-                String text = hudModule.getHudText();
-                if (text != null && !text.isEmpty()) {
-                    context.drawText(
-                        net.minecraft.client.MinecraftClient.getInstance().textRenderer,
-                        text, 4, y, hudModule.getColor(), true
-                    );
-                    y += 12;
-                }
+            if (module instanceof HudOverlayModule hud) {
+                hud.renderHud(context);
             }
         }
+    }
+
+    /** Get the HUD module for drag handling */
+    public HudOverlayModule getHudModule() {
+        for (Module m : modules) {
+            if (m instanceof HudOverlayModule h) return h;
+        }
+        return null;
     }
 }

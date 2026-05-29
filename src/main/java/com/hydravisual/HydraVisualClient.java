@@ -1,6 +1,7 @@
 package com.hydravisual;
 
 import com.hydravisual.module.ModuleManager;
+import com.hydravisual.module.modules.HudOverlayModule;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -9,7 +10,7 @@ import org.slf4j.LoggerFactory;
 
 public class HydraVisualClient implements ClientModInitializer {
     public static final String MOD_ID = "hydravisual";
-    public static final String MOD_NAME = "HydraVisual";
+    public static final String MOD_NAME = "SeladalaVisual";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
     public static HydraVisualClient INSTANCE;
@@ -18,23 +19,25 @@ public class HydraVisualClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         INSTANCE = this;
-        LOGGER.info("🐉 {} v1.0.0 загружен!", MOD_NAME);
+        LOGGER.info("🐉 {} v1.2.0 загружен!", MOD_NAME);
 
-        // Initialize module system
         moduleManager = new ModuleManager();
         moduleManager.init();
 
-        // Register keybindings
         KeyBindManager.init();
 
-        // Register HUD render callback (Fabric API)
+        // HUD rendering
         HudRenderCallback.EVENT.register((drawContext, renderTickCounter) -> {
             moduleManager.onRender(drawContext);
         });
 
-        // Register tick callback
+        // Tick — modules + keybind polling
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             moduleManager.onTick();
+            KeyBindManager.pollKeyBinds();
+            // HUD drag in chat
+            var hud = moduleManager.getHudModule();
+            if (hud != null) hud.tickDrag();
         });
 
         LOGGER.info("✅ Загружено {} модулей", moduleManager.getModuleCount());
