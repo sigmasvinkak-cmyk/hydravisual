@@ -19,7 +19,10 @@ public class HydraVisualClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         INSTANCE = this;
-        LOGGER.info("🐉 {} v1.3.0 загружен!", MOD_NAME);
+        LOGGER.info("🐉 {} v1.5.0 загружен!", MOD_NAME);
+
+        // Register custom sounds FIRST
+        ModSounds.register();
 
         moduleManager = new ModuleManager();
         moduleManager.init();

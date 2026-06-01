@@ -3,10 +3,10 @@ package com.hydravisual.module;
 import java.util.List;
 
 /**
- * Module setting — slider, toggle, or enum (list of options)
+ * Module setting — slider, toggle, enum, or toggle_row (multi-select checkboxes in a row)
  */
 public class Setting {
-    public enum Type { SLIDER, TOGGLE, ENUM }
+    public enum Type { SLIDER, TOGGLE, ENUM, TOGGLE_ROW }
 
     private final String name;
     private final Type type;
@@ -21,6 +21,10 @@ public class Setting {
     // Enum
     private List<String> options;
     private int selectedIndex;
+
+    // Toggle Row (multi-select)
+    private String[] rowLabels;
+    private boolean[] rowStates;
 
     private Runnable onChange;
 
@@ -40,8 +44,17 @@ public class Setting {
     /** Enum */
     public Setting(String name, List<String> options, int selectedIndex) {
         this.name = name; this.type = Type.ENUM;
-        this.options = options; this.selectedIndex = Math.max(0, Math.min(selectedIndex, options.size()-1));
-        this.value = 0; this.min = 0; this.max = options.size()-1; this.step = 1;
+        this.options = options;
+        this.selectedIndex = Math.max(0, Math.min(selectedIndex, options.size() - 1));
+        this.value = 0; this.min = 0; this.max = options.size() - 1; this.step = 1;
+    }
+
+    /** Toggle Row — multiple named checkboxes, each independently on/off */
+    public Setting(String name, String[] labels, boolean[] defaultStates) {
+        this.name = name; this.type = Type.TOGGLE_ROW;
+        this.rowLabels = labels;
+        this.rowStates = defaultStates.clone();
+        this.value = 0; this.min = 0; this.max = 1; this.step = 1;
     }
 
     public String getName() { return name; }
@@ -68,11 +81,27 @@ public class Setting {
     public int getSelectedIndex() { return selectedIndex; }
     public String getSelected() { return options != null ? options.get(selectedIndex) : ""; }
     public void setSelectedIndex(int i) {
-        this.selectedIndex = Math.max(0, Math.min(i, options.size()-1));
+        this.selectedIndex = Math.max(0, Math.min(i, options.size() - 1));
         if (onChange != null) onChange.run();
     }
     public void nextOption() { setSelectedIndex((selectedIndex + 1) % options.size()); }
     public void prevOption() { setSelectedIndex((selectedIndex - 1 + options.size()) % options.size()); }
+
+    // Toggle Row
+    public String[] getRowLabels() { return rowLabels; }
+    public boolean[] getRowStates() { return rowStates; }
+    public boolean getRowState(int i) { return i >= 0 && i < rowStates.length && rowStates[i]; }
+    public void toggleRow(int i) {
+        if (i >= 0 && i < rowStates.length) {
+            rowStates[i] = !rowStates[i];
+            if (onChange != null) onChange.run();
+        }
+    }
+    /** Returns true if any of the row items is enabled */
+    public boolean anyRowEnabled() {
+        for (boolean s : rowStates) if (s) return true;
+        return false;
+    }
 
     public Setting onChange(Runnable r) { this.onChange = r; return this; }
 }

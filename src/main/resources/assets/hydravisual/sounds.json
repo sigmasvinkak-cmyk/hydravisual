@@ -1,18 +1,14 @@
 {
-  "hydravisual:hitsound.pop": {
-    "sounds": ["hydravisual:pop"],
-    "category": "player"
+  "hitsound.pop": {
+    "sounds": ["hydravisual:pop"]
   },
-  "hydravisual:hitsound.uwu": {
-    "sounds": ["hydravisual:uwu"],
-    "category": "player"
+  "hitsound.uwu": {
+    "sounds": ["hydravisual:uwu"]
   },
-  "hydravisual:hitsound.crit1": {
-    "sounds": ["hydravisual:crit1"],
-    "category": "player"
+  "hitsound.crit1": {
+    "sounds": ["hydravisual:crit1"]
   },
-  "hydravisual:hitsound.crit2": {
-    "sounds": ["hydravisual:crit2"],
-    "category": "player"
+  "hitsound.crit2": {
+    "sounds": ["hydravisual:crit2"]
   }
 }

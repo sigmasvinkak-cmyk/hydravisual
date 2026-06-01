@@ -87,4 +87,12 @@ public class ModuleManager {
         }
         return null;
     }
+
+    /** Get Fullbright module for GammaOptionMixin */
+    public Fullbright getFullbrightModule() {
+        for (Module m : modules) {
+            if (m instanceof Fullbright f) return f;
+        }
+        return null;
+    }
 }

@@ -312,6 +312,22 @@ public class HydraScreen extends Screen {
                 ctx.drawText(textRenderer,sel,selX,sy,withAlpha(accent(i*200),alpha),false);
 
                 sy+=16;
+            } else if(s.getType()==Setting.Type.TOGGLE_ROW) {
+                // Label
+                ctx.drawText(textRenderer,s.getName()+":",cx+4,sy,withAlpha(0xFFc0c0c8,alpha),false);
+                sy+=14;
+                // Draw each toggle button in a row
+                String[] labels=s.getRowLabels();
+                boolean[] states=s.getRowStates();
+                int btnX=cx+4;
+                for(int j=0;j<labels.length;j++) {
+                    int bw=textRenderer.getWidth(labels[j])+12;
+                    boolean on=states[j];
+                    fillR(ctx,btnX,sy,bw,14,4,withAlpha(on?accent(i*200+j*100):0xFF1a1a24,alpha));
+                    ctx.drawText(textRenderer,labels[j],btnX+6,sy+3,withAlpha(on?0xFFf0f0f4:0xFF606068,alpha),false);
+                    btnX+=bw+4;
+                }
+                sy+=20;
             }
         }
 
@@ -369,6 +385,19 @@ public class HydraScreen extends Screen {
                             return true;
                         }
                         sy+=16;
+                    } else if(s.getType()==Setting.Type.TOGGLE_ROW) {
+                        sy+=14; // skip label row
+                        String[] labels=s.getRowLabels();
+                        int btnX2=cx+4;
+                        for(int j=0;j<labels.length;j++) {
+                            int bw=textRenderer.getWidth(labels[j])+12;
+                            if(mx>=btnX2&&mx<=btnX2+bw&&my>=sy&&my<=sy+14) {
+                                s.toggleRow(j);
+                                return true;
+                            }
+                            btnX2+=bw+4;
+                        }
+                        sy+=20;
                     }
                 }
             }
