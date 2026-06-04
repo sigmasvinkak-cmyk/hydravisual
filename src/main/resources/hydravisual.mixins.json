@@ -6,7 +6,9 @@
   "client": [
     "ChatScreenMixin",
     "PlayerAttackMixin",
-    "GammaOptionMixin"
+    "GammaOptionMixin",
+    "AttackSoundMuteMixin",
+    "HeldItemRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

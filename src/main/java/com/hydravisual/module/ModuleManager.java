@@ -17,6 +17,7 @@ public class ModuleManager {
     public void init() {
         // === VISUAL ===
         register(new Fullbright());
+        register(new ViewModel());
 
         // === HUD ===
         register(new HudOverlayModule());
@@ -92,6 +93,14 @@ public class ModuleManager {
     public Fullbright getFullbrightModule() {
         for (Module m : modules) {
             if (m instanceof Fullbright f) return f;
+        }
+        return null;
+    }
+
+    /** Get ViewModel module for HeldItemRendererMixin */
+    public ViewModel getViewModelModule() {
+        for (Module m : modules) {
+            if (m instanceof ViewModel v) return v;
         }
         return null;
     }
