@@ -33,7 +33,8 @@ public class HydraScreen extends Screen {
 
     // Settings panel: right-click a module
     private int settingsModuleIndex = -1;
-    private int draggingSlider = -1; // which setting slider is being dragged
+    private int draggingSlider = -1;
+    private float settingsScrollOffset = 0f, settingsScrollTarget = 0f;
 
     public HydraScreen() {
         super(Text.literal("Menu"));
@@ -147,7 +148,7 @@ public class HydraScreen extends Screen {
     private void drawSidebar(DrawContext ctx,int mx,int my,int alpha,float delta) {
         int logoY=py+14;
         ctx.drawText(textRenderer,"SeladalaVisual",px+14,logoY,withAlpha(0xFFe0e0e8,alpha),false);
-        ctx.drawText(textRenderer,"v1.3.0",px+14,logoY+12,withAlpha(0xFF505058,alpha),false);
+        ctx.drawText(textRenderer,"v1.6.0",px+14,logoY+12,withAlpha(0xFF505058,alpha),false);
         int sepY=logoY+28;
         ctx.fill(px+12,sepY,px+SIDEBAR_W-12,sepY+1,withAlpha(0xFF2a2a32,alpha));
         int tabStartY=sepY+10;
@@ -261,7 +262,16 @@ public class HydraScreen extends Screen {
         // Header: back arrow + module name
         ctx.drawText(textRenderer,"\u2190 "+mod.getName()+" — Настройки",cx,cy,withAlpha(0xFFe8e8f0,alpha),false);
 
-        int sy=cy+22;
+        int contentTop=cy+22;
+        int contentH=ph-28-22;
+
+        // Smooth scroll
+        settingsScrollOffset+=(settingsScrollTarget-settingsScrollOffset)*0.3f;
+
+        // Enable scissor for clipping
+        ctx.enableScissor(cx,contentTop,cx+cw,contentTop+contentH);
+
+        int sy=contentTop-(int)settingsScrollOffset;
         for(int i=0;i<settings.size();i++) {
             Setting s=settings.get(i);
             if(s.getType()==Setting.Type.SLIDER) {
@@ -331,9 +341,23 @@ public class HydraScreen extends Screen {
             }
         }
 
-        // Close hint
-        sy+=10;
-        ctx.drawText(textRenderer,"ЛКМ по стрелке или ESC — назад",cx+4,sy,withAlpha(0xFF404050,alpha/2),false);
+        int totalSettingsH=sy-(contentTop-(int)settingsScrollOffset)+10;
+        ctx.disableScissor();
+
+        // Scrollbar
+        int maxSetScroll=Math.max(0,totalSettingsH-contentH);
+        settingsScrollTarget=Math.max(0,Math.min(settingsScrollTarget,maxSetScroll));
+        if(totalSettingsH>contentH&&maxSetScroll>0) {
+            int bx=cx+cw-2;
+            float r=(float)contentH/totalSettingsH;
+            int th2=Math.max(12,(int)(contentH*r));
+            int ty2=contentTop+(int)((settingsScrollOffset/maxSetScroll)*(contentH-th2));
+            ctx.fill(bx,contentTop,bx+2,contentTop+contentH,withAlpha(0xFF1a1a20,alpha/3));
+            fillR(ctx,bx,ty2,2,th2,1,withAlpha(0xFF404048,alpha));
+        }
+
+        // Close hint (below scissor area)
+        ctx.drawText(textRenderer,"ЛКМ стрелка/ESC — назад | Колёсико — листать",cx+4,contentTop+contentH+4,withAlpha(0xFF404050,alpha/2),false);
     }
 
     // ===== PLACEHOLDER =====
@@ -360,7 +384,7 @@ public class HydraScreen extends Screen {
             if(settingsModuleIndex<modules.size()) {
                 Module mod=modules.get(settingsModuleIndex);
                 List<Setting> settings=mod.getSettings();
-                int sy=cy+22;
+                int sy=cy+22-(int)settingsScrollOffset;
                 for(int i=0;i<settings.size();i++) {
                     Setting s=settings.get(i);
                     if(s.getType()==Setting.Type.SLIDER) {
@@ -470,7 +494,13 @@ public class HydraScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mx,double my,double hA,double vA) {
-        if(settingsModuleIndex<0) { scrollTarget-=(float)(vA*30); scrollTarget=Math.max(0,scrollTarget); }
+        if(settingsModuleIndex>=0) {
+            settingsScrollTarget-=(float)(vA*20);
+            settingsScrollTarget=Math.max(0,settingsScrollTarget);
+        } else {
+            scrollTarget-=(float)(vA*30);
+            scrollTarget=Math.max(0,scrollTarget);
+        }
         return true;
     }
 

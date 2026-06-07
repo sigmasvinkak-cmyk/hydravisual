@@ -17,18 +17,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(HeldItemRenderer.class)
 public class HeldItemRendererMixin {
 
+    /**
+     * Push our own matrix at HEAD and apply ViewModel transforms.
+     * This isolates our transforms from the other hand's rendering.
+     * We pop at RETURN to keep the matrix stack balanced.
+     */
     @Inject(method = "renderFirstPersonItem", at = @At("HEAD"))
-    private void onRenderFirstPersonItem(
+    private void onHead(
             AbstractClientPlayerEntity player, float tickDelta, float pitch,
             Hand hand, float swingProgress, ItemStack item, float equipProgress,
             MatrixStack matrices, VertexConsumerProvider vertexConsumers,
             int light, CallbackInfo ci) {
+        matrices.push();
         try {
             if (HydraVisualClient.INSTANCE == null) return;
             ViewModel vm = HydraVisualClient.INSTANCE.getModuleManager().getViewModelModule();
             if (vm == null || !vm.isEnabled()) return;
 
-            // Determine if this is the main (right) or off (left) hand
             Arm mainArm = player.getMainArm();
             boolean isRight = (hand == Hand.MAIN_HAND) == (mainArm == Arm.RIGHT);
 
@@ -42,5 +47,20 @@ public class HeldItemRendererMixin {
                 matrices.scale(s, s, s);
             }
         } catch (Exception ignored) {}
+    }
+
+    /**
+     * Pop the matrix we pushed at HEAD, so the stack stays balanced.
+     * Because we pushed before the method's own push(), our pop
+     * restores the state after the method's pop() — keeping each
+     * hand's transforms fully isolated.
+     */
+    @Inject(method = "renderFirstPersonItem", at = @At("RETURN"))
+    private void onReturn(
+            AbstractClientPlayerEntity player, float tickDelta, float pitch,
+            Hand hand, float swingProgress, ItemStack item, float equipProgress,
+            MatrixStack matrices, VertexConsumerProvider vertexConsumers,
+            int light, CallbackInfo ci) {
+        matrices.pop();
     }
 }
